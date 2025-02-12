@@ -371,13 +371,13 @@ def func_simulateOccupancyData(camConfig, siteScenN, maxCam, minCam, durScenN, m
 
 
 
-camConfig = widgets.IntSlider(min=1, max=1000, step=1, value=0, description="camConfig:")
-siteScenN = widgets.IntSlider(min=1, max=1000, step=1, value=0, description="siteScenN:")
-maxCam = widgets.IntSlider(min=1, max=1000, step=1, value=0, description="maxCam:")
-minCam = widgets.IntSlider(min=1, max=1000, step=1, value=0, description="minCam:")
-durScenN = widgets.IntSlider(min=1, max=1000, step=1, value=0, description="durScenN:")
-maxDur = widgets.IntSlider(min=1, max=1000, step=1, value=0, description="maxDur:")
-minDur = widgets.IntSlider(min=1, max=1000, step=1, value=0, description="minDur:")
+camConfig = widgets.IntSlider(min=1, max=3, step=1, value=0, description="camConfig:")
+siteScenN = widgets.IntSlider(min=1, max=50, step=1, value=0, description="siteScenN:")
+maxCam = widgets.IntSlider(min=1, max=200, step=1, value=0, description="maxCam:")
+minCam = widgets.IntSlider(min=1, max=200, step=1, value=0, description="minCam:")
+durScenN = widgets.IntSlider(min=1, max=50, step=1, value=0, description="durScenN:")
+maxDur = widgets.IntSlider(min=1, max=50, step=1, value=0, description="maxDur:")
+minDur = widgets.IntSlider(min=1, max=50, step=1, value=0, description="minDur:")
 
 
 
