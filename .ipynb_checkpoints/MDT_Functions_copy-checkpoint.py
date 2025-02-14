@@ -257,8 +257,8 @@ def inputSpatial():
 def simulateReponse():
 
     # Display widgets
-    slider_Vbox = widgets.VBox([slider_A, slider_B], layout=widgets.Layout(width='25%'))
-    graph_Vbox = widgets.VBox([plot_output, out], layout=widgets.Layout(width='75%'))
+    slider_Vbox = widgets.VBox([slider_A, slider_B], layout=widgets.Layout(width='30%'))
+    graph_Vbox = widgets.VBox([plot_output, out], layout=widgets.Layout(width='70%'))
     main_Hbox = widgets.HBox([slider_Vbox, graph_Vbox])
     display(main_Hbox)
     # display(slider_A, slider_B, value_output, plot_output)
@@ -268,13 +268,6 @@ def simulateReponse():
     # trueOcc = askQuestion("trueOcc","Converting use into occupancy. What is the true proportion of the area that is occupied (number between 0 and 1)?")
     # dens = askQuestion("dense","Simulate a population within the occupied cells using a population density. What is the density of individuals per km2 (0.001 - 1)?")
     # spatial_prob_button.on_click(lambda b: spatial_on_button_click(responseValues, b))
-
-
-
-
-
-
-
 
 
 
@@ -371,22 +364,13 @@ def func_simulateOccupancyData(camConfig, siteScenN, maxCam, minCam, durScenN, m
 
 
 
-camConfig = widgets.IntSlider(min=1, max=1000, step=1, value=0, description="camConfig:")
-siteScenN = widgets.IntSlider(min=1, max=1000, step=1, value=0, description="siteScenN:")
-maxCam = widgets.IntSlider(min=1, max=1000, step=1, value=0, description="maxCam:")
-minCam = widgets.IntSlider(min=1, max=1000, step=1, value=0, description="minCam:")
-durScenN = widgets.IntSlider(min=1, max=1000, step=1, value=0, description="durScenN:")
-maxDur = widgets.IntSlider(min=1, max=1000, step=1, value=0, description="maxDur:")
-minDur = widgets.IntSlider(min=1, max=1000, step=1, value=0, description="minDur:")
-
-
-
-
-
-
-
-
-
+camConfig = widgets.IntSlider(min=1, max=3, step=1, value=0, description="camConfig:")
+siteScenN = widgets.IntSlider(min=1, max=50, step=1, value=0, description="siteScenN:")
+maxCam = widgets.IntSlider(min=1, max=200, step=1, value=0, description="maxCam:")
+minCam = widgets.IntSlider(min=1, max=200, step=1, value=0, description="minCam:")
+durScenN = widgets.IntSlider(min=1, max=50, step=1, value=0, description="durScenN:")
+maxDur = widgets.IntSlider(min=1, max=50, step=1, value=0, description="maxDur:")
+minDur = widgets.IntSlider(min=1, max=50, step=1, value=0, description="minDur:")
 
 
 
