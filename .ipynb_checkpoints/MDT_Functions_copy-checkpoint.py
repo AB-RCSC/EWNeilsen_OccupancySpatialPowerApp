@@ -64,7 +64,7 @@ def normScaler (inArray):
 
 # Create two integer sliders A and B
 slider_A = widgets.FloatSlider(min=0.01, max=1, step=0.1, value=0.5, description="trueOcc:")
-slider_B = widgets.FloatSlider(min=0.001, max=1, step=0.01, value=0.5, description="dense:")
+slider_B = widgets.FloatSlider(min=0, max=1, step=0.01, value=0.5, description="dense:")
 
 # Output widgets for displaying values and the bar chart
 value_output = widgets.Output()
