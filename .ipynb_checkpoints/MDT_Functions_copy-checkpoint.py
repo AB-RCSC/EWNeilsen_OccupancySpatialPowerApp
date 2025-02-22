@@ -64,7 +64,7 @@ def normScaler (inArray):
 
 # Create two integer sliders A and B
 slider_A = widgets.FloatSlider(min=0.01, max=1, step=0.1, value=0.5, description="trueOcc:")
-slider_B = widgets.FloatSlider(min=0, max=1, step=0.01, value=0.5, description="dense:")
+slider_B = widgets.FloatSlider(min=0, max=0.1, step=0.001, value=0.05, description="dense:")
 
 # Output widgets for displaying values and the bar chart
 value_output = widgets.Output()
@@ -122,6 +122,7 @@ def update_bar_chart(A, B):
         animals over the area of the occupied cells """   
         print('------------------')
         dens = B
+    
         N = float(dens) * saAreaKM
         popPX = N/pxN   
         if popPX > 1:
@@ -169,6 +170,7 @@ def update_bar_chart(A, B):
         with out:
             out.clear_output(wait=True)  # Clear previous plot
             for ax, (i, pltDat) in zip(axes, responseValues.items()):
+                # print(pltDat)
                 ax.set_title(f"{i} {np.amin(pltDat):.2f}_{np.amax(pltDat):.2f}")
                 ax.imshow(pltDat, cmap='viridis')  # Adjust colormap as needed
                 ax.axis("off")  # Remove axes for a cleaner view

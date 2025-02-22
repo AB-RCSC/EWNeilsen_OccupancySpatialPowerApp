@@ -63,7 +63,7 @@ def inputSpatial():
     print(cwd)    
     
     ## raster info ##
-    global nodata;  global extent; global srs; global n_rows; global n_cols; global cell_size;
+    global nodata;  global extent; global srs; global n_rows; global n_cols; global cell_size
     nodata = -9999
     cell_size = 5000
     SAshp = vdriver.Open(cwd + '/Data/SpatialLayers/Test_SA.shp')
@@ -184,6 +184,7 @@ def simulateReponse():
     for i in responseValues:
         plt.close()
         pltDat = responseValues[i]
+        # print(pltDat)
         plt.title(i + str(np.amin(pltDat)) + "_" + str(np.amax(pltDat)))
         plt.imshow(pltDat)
         plt.show() 
