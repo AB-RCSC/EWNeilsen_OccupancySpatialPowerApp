@@ -261,11 +261,14 @@ def inputSpatial():
 def simulateReponse():
 
     # Display widgets
-    slider_Vbox = widgets.VBox([slider_A, slider_B])
+    slider_Vbox = widgets.VBox([slider_A, slider_B], layout = widgets.Layout(
+                                    margin = "10px 0px 30px 0px"
+                                ))
     graph_Vbox = widgets.VBox(
                         [plot_output, out],
                         layout=widgets.Layout(
-                            border="1px solid black"  # 2px black border
+                            border="2px solid black",  # 2px black border
+                            margin = "2px 0px 0px 0px"
                         )
                     )
     # main_Hbox = widgets.HBox([slider_Vbox, graph_Vbox])    # Previous
@@ -382,15 +385,19 @@ def func_simulateOccupancyData(camConfig, siteScenN, maxCam, minCam, durScenN, m
 
 
 
-camConfig = widgets.IntSlider(min=1, max=3, step=1, value=0, description="camConfig:")
+# camConfig = widgets.IntSlider(min=1, max=3, step=1, value=0, description="camConfig:")
+camConfig = widgets.Dropdown(
+    options=[(f"{i}", i) for i in range(1, 4)],  # Dropdown options
+    value=1,  # Default selected value
+    description="camConfig:",
+    style={"description_width": "initial"}  # Ensures label is fully visible
+)
 siteScenN = widgets.IntSlider(min=1, max=50, step=1, value=0, description="siteScenN:")
 maxCam = widgets.IntSlider(min=1, max=200, step=1, value=0, description="maxCam:")
 minCam = widgets.IntSlider(min=1, max=200, step=1, value=0, description="minCam:")
 durScenN = widgets.IntSlider(min=1, max=50, step=1, value=0, description="durScenN:")
 maxDur = widgets.IntSlider(min=1, max=50, step=1, value=0, description="maxDur:")
 minDur = widgets.IntSlider(min=1, max=50, step=1, value=0, description="minDur:")
-
-
 
 
 
