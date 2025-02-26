@@ -92,8 +92,8 @@ def update_bar_chart(A, B):
         responseValues["Use"] = normScaler(np.sum(varArray, axis=0))
 
         
-        print('------------------')
-        print("Used the inputted rasters to simulate the spatial probability of use across study area.");print('')
+        # print('------------------')
+        # print("Used the inputted rasters to simulate the spatial probability of use across study area.");print('')
     
         ###########################
         ## CONVERT TO OCCUPANCY
@@ -105,7 +105,7 @@ def update_bar_chart(A, B):
         top twenty percent of prob use values are occupied."""
         
         global trueOcc
-        print('------------------')
+        # print('------------------')
         trueOcc = A
         occThreshold = np.quantile(responseValues["Use"], 1 - trueOcc)        
         responseValues["Occupancy"] = np.zeros(shape=responseValues["Use"].shape)
@@ -114,21 +114,21 @@ def update_bar_chart(A, B):
         pxN = sum( [1 for line in responseValues["Occupancy"] for x in line if x ==1 ] )
         cellArea = cell_size ** 2
         saAreaKM = (cellArea/1000000) * pxN
-        print("There are " + str(pxN) + " occupied pixels (" + str(saAreaKM) + " km occupied area). This leads to an instantaneous probability of detection in any cell for one, randomly moving, individual of " + str(round(1/pxN,4)));print('')
+        # print("There are " + str(pxN) + " occupied pixels (" + str(saAreaKM) + " km occupied area). This leads to an instantaneous probability of detection in any cell for one, randomly moving, individual of " + str(round(1/pxN,4)));print('')
     
         ###########################
         ## SPATIAL PROBABILITY OF USE FOR A POPULATION 
         """ Density will apply to a number of
         animals over the area of the occupied cells """   
-        print('------------------')
+        # print('------------------')
         dens = B
     
         N = float(dens) * saAreaKM
         popPX = N/pxN   
         if popPX > 1:
             popPX = 1
-        print('') 
-        print("With a density of " + str(dens) + " individuals per pixel across all occupied pixels, the total population is " + str(round(N,2)) + ". This gives an instantaneous probability of use of any occupied cell, of any randomly moving individual, of " + str(round(popPX,4)))
+        # print('') 
+        # print("With a density of " + str(dens) + " individuals per pixel across all occupied pixels, the total population is " + str(round(N,2)) + ". This gives an instantaneous probability of use of any occupied cell, of any randomly moving individual, of " + str(round(popPX,4)))
         
         ## SPATIAL PROBABILITY OF DETECTION    
         """ Use the product of occupancy and use to 
@@ -144,7 +144,7 @@ def update_bar_chart(A, B):
         responseValues["Detection"] = spatDet
         global meanDetection
         meanDetection = np.mean(spatDet[spatDet != 0])
-        print("The mean instantaneous probability of detection across occupied cells, for any randomly moveing individual, is " +    str(round(meanDetection,4)));print('')
+        # print("The mean instantaneous probability of detection across occupied cells, for any randomly moveing individual, is " +    str(round(meanDetection,4)));print('')
 
         ## RASTER OUTPUTS
         for res in responseValues:
@@ -157,7 +157,9 @@ def update_bar_chart(A, B):
             rasterizedDS = None
             responsePath = None
         ##  PLOTTING
-        print("Finished calculating distribution vars:", list(responseValues.keys()))
+        # print("Finished calculating distribution vars:", list(responseValues.keys()))
+
+        
         # Create an Output widget 
         # out = widgets.Output()
 
@@ -222,7 +224,7 @@ def askQuestion(respType,question):
 def inputSpatial():
     global cwd
     cwd = os.getcwd() 
-    print(cwd)    
+    # print(cwd)    
     
     ## raster info ##
     global nodata;  global extent; global srs; global n_rows; global n_cols; global cell_size;
@@ -234,7 +236,7 @@ def inputSpatial():
     srs = rlayer.GetSpatialRef()
     n_rows = int(math.ceil(abs(extent[1] - extent[0]) / cell_size))
     n_cols = int(math.ceil(abs(extent[3] - extent[2]) / cell_size))
-    print("The study area has " + str(extent)  + ". \nIt has " + str(n_rows) + " rows and "  + str(n_cols) + " columns." );print('')
+    # print("The study area has " + str(extent)  + ". \nIt has " + str(n_rows) + " rows and "  + str(n_cols) + " columns." );print('')
     
     global usePredictors
     usePredictors = {}
@@ -253,20 +255,34 @@ def inputSpatial():
     waterProxArray = normScaler(band1)
     usePredictors["water_proximity"] = waterProxArray
     
-    print('------------------')   
-    print("Finished inputing Use vars:", list(usePredictors.keys()));print('')
+    # print('------------------')   
+    # print("Finished inputing Use vars:", list(usePredictors.keys()));print('')
 
 def simulateReponse():
 
     # Display widgets
-    slider_Vbox = widgets.VBox([slider_A, slider_B], layout=widgets.Layout(width='30%'))
-    graph_Vbox = widgets.VBox([plot_output, out], layout=widgets.Layout(width='70%'))
-    main_Hbox = widgets.HBox([slider_Vbox, graph_Vbox])
-    display(main_Hbox)
-    # display(slider_A, slider_B, value_output, plot_output)
+    slider_Vbox = widgets.VBox([slider_A, slider_B])
+    graph_Vbox = widgets.VBox(
+                        [plot_output, out],
+                        layout=widgets.Layout(
+                            border="1px solid black"  # 2px black border
+                        )
+                    )
+    # main_Hbox = widgets.HBox([slider_Vbox, graph_Vbox])    # Previous
     
     # Initialize chart on first load
     update_values(None)
+    
+    # display(main_Hbox) # Previous
+
+    return slider_Vbox, graph_Vbox # present
+
+
+
+    
+    # display(slider_A, slider_B, value_output, plot_output)
+    
+    
     # trueOcc = askQuestion("trueOcc","Converting use into occupancy. What is the true proportion of the area that is occupied (number between 0 and 1)?")
     # dens = askQuestion("dense","Simulate a population within the occupied cells using a population density. What is the density of individuals per km2 (0.001 - 1)?")
     # spatial_prob_button.on_click(lambda b: spatial_on_button_click(responseValues, b))
@@ -410,8 +426,9 @@ def simulateOccupancyData():
     # durScenN = askQuestion("int","Enter the number of duration scenarios.")
     # maxDur = askQuestion("int","Enter the max duration of deployments (weeks).")
     # minDur = askQuestion("int","Enter the min duration of deployments (weeks).")
-    simulateOccupancyData_Vbox = widgets.VBox([camConfig, siteScenN, maxCam, minCam, durScenN, maxDur, minDur], layout=widgets.Layout(width='30%'))
-    display(simulateOccupancyData_Vbox)
+    simulateOccupancyData_Vbox = widgets.VBox([camConfig, siteScenN, maxCam, minCam, durScenN, maxDur, minDur], layout=widgets.Layout(width='auto'))
+    
+    return simulateOccupancyData_Vbox
 
 
 
