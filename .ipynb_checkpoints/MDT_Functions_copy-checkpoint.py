@@ -66,6 +66,13 @@ def normScaler (inArray):
 slider_A = widgets.FloatSlider(min=0.01, max=1, step=0.1, value=0.5, description="trueOcc:")
 slider_B = widgets.FloatSlider(min=0, max=0.1, step=0.001, value=0.05, description="dense:")
 
+#####################################################
+
+
+
+####################################################
+
+
 # Output widgets for displaying values and the bar chart
 value_output = widgets.Output()
 plot_output = widgets.Output()
@@ -264,11 +271,13 @@ def simulateReponse():
     slider_Vbox = widgets.VBox([slider_A, slider_B], layout = widgets.Layout(
                                     margin = "10px 0px 30px 0px"
                                 ))
+
+    
+    # display(checkbox_group)
     graph_Vbox = widgets.VBox(
                         [plot_output, out],
                         layout=widgets.Layout(
-                            border="2px solid black",  # 2px black border
-                            margin = "2px 0px 0px 0px"
+                            width = "75%"
                         )
                     )
     # main_Hbox = widgets.HBox([slider_Vbox, graph_Vbox])    # Previous
