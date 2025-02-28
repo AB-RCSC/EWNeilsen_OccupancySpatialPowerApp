@@ -1,3 +1,5 @@
+import rpy2.robjects as ro
+from rpy2.robjects.packages import importr
 import json
 import numpy as np
 import statsmodels as sm
@@ -316,7 +318,9 @@ minDur = widgets.IntSlider(min=1, max=50, step=1, value=4, description="minDur:"
 # Output widget to display results dynamically
 simulateOccupancyData_output = widgets.Output()
 
-# Function to display simulation results dynamically
+
+
+# Define your function
 def func_simulateOccupancyData(change=None):
     with simulateOccupancyData_output:
         simulateOccupancyData_output.clear_output(wait=True)  # Clear previous output
@@ -328,6 +332,7 @@ def func_simulateOccupancyData(change=None):
         print(f"durScenN: {durScenN.value}")
         print(f"maxDur: {maxDur.value}")
         print(f"minDur: {minDur.value}")
+        
 
         # Assign values to new variables
         cam_config_value = camConfig.value
@@ -338,9 +343,9 @@ def func_simulateOccupancyData(change=None):
         max_dur_value = maxDur.value
         min_dur_value = minDur.value
 
-        # Use new variable names instead of the widget names
-        sitesN = range(min_cam_value, max_cam_value, round(max_cam_value / site_scenN_value)) 
-        dursN = range(min_dur_value, max_dur_value, round(max_dur_value / dur_scenN_value))    
+        # Ensure safe range calculations
+        sitesN = range(min_cam_value, max_cam_value, max(1, round(max_cam_value / site_scenN_value))) 
+        dursN = range(min_dur_value, max_dur_value, max(1, round(max_dur_value / dur_scenN_value)))    
 
         ###########################
         ## SIMULATE DETECTION HISTORIES
@@ -354,21 +359,17 @@ def func_simulateOccupancyData(change=None):
                 if cam_config_value == 1:            
                     rArray = responseValues["Use"]
                     rSize = rArray.size
-                    rSysN = int(round(rSize / sn))
-                    siteList = np.zeros(shape=responseValues["Use"].shape)
-                    siteList = np.ndarray.flatten(siteList)
-                    siteList[1::rSysN] = 1
-                    siteList = np.reshape(siteList, (responseValues["Use"].shape))
+                    rSysN = max(1, int(round(rSize / sn)))
+                    siteList = np.zeros_like(responseValues["Use"])
+                    siteList.flat[::rSysN] = 1
                 
                 ## RANDOM SITES
                 elif cam_config_value == 2:           
                     rArray = responseValues["Use"]
                     rSize = rArray.size
-                    siteInds = [random.randrange(rSize) for _ in range(sn)]
-                    siteList = np.zeros(shape=responseValues["Use"].shape)
-                    siteList = np.ndarray.flatten(siteList)
-                    siteList[siteInds] = 1
-                    siteList = np.reshape(siteList, (responseValues["Use"].shape))
+                    siteInds = random.sample(range(rSize), sn)
+                    siteList = np.zeros_like(responseValues["Use"])
+                    siteList.flat[siteInds] = 1
 
                 #########################
                 ## GET TRUE DETECTION AND OCCUPANCY VALUES AT SITES
@@ -384,21 +385,170 @@ def func_simulateOccupancyData(change=None):
                 siteDet = np.array(siteDet)       
                 
                 #########################   
-                ## POPULATED DETECTION HISTORIES (NO MISSING DATA FUNCTIONS YET)
+                ## POPULATED DETECTION HISTORIES
                 ScenName = f"{sn}_{dn}"
                 os.makedirs(f"{cwd}/Data/DetectionHistories/{ScenName}", exist_ok=True)    
 
                 simN = 10       
                 for simn in range(simN):        
-                    DetectionHistory = []
-                    
-                    for sd in siteDet:    
-                        siteDetHist = [1 if random.uniform(0, 1) < sd else 0 for _ in range(dn)]
-                        DetectionHistory.append(siteDetHist)
+                    DetectionHistory = [[1 if random.uniform(0, 1) < sd else 0 for _ in range(dn)] for sd in siteDet]
 
                     ## Export 
                     dh = pd.DataFrame(DetectionHistory)
                     dh.to_csv(f"{cwd}/Data/DetectionHistories/{ScenName}/{simn + 1}_dh.csv", index=False)
+
+        ##########-----------------------------------------------------
+        # Assign Python variables to R
+        ro.globalenv["cwd"] = cwd
+        ro.globalenv["trueOcc"] = trueOcc
+        ro.globalenv["popPX"] = popPX 
+        ro.globalenv["N"] = N  
+        ro.globalenv["meanDetection"] = float(meanDetection) 
+
+        ro.globalenv["cam_config_value"] = cam_config_value
+        ro.globalenv["site_scenN_value"] = site_scenN_value
+        ro.globalenv["max_cam_value"] = max_cam_value
+        ro.globalenv["min_cam_value"] = min_cam_value
+        ro.globalenv["dur_scenN_value"] = dur_scenN_value
+        ro.globalenv["max_dur_value"] = max_dur_value
+        ro.globalenv["min_dur_value"] = min_dur_value
+
+        # Multi-line R script (fixed formatting)
+        r_script = """
+                # print(cwd)
+                # print(trueOcc)
+                # print(popPX)
+                # print(N)
+                # print(meanDetection)
+                
+                library(unmarked)
+                options(warn=2)  # Convert warnings to errors for debugging
+        
+                getParams <- function(modObject) {
+                    outParams <- list()
+                    psiTab <- predict(modObject, type="state", newdata=data.frame(1))
+                    outParams$psi <- psiTab$Predicted
+                    outParams$psiSE <- psiTab$SE
+                    outParams$psiBias <- outParams$psi - trueOcc
+        
+                    pTab <- predict(modObject, type="det", newdata=data.frame(1))
+                    outParams$p <- pTab$Predicted
+                    outParams$pSE <- pTab$SE
+                    outParams$pBias <- outParams$p - meanDetection
+        
+                    return(outParams)
+                }
+        
+                OccOutTab <- data.frame(CamN = NA, IntervalsN = NA, Response = NA, Estimate = NA,
+                                       SE = NA, Bias = NA, inSig = NA)
+        
+                dhScenDirs <- list.dirs(paste0(cwd, '/Data/DetectionHistories'), recursive = FALSE)
+        
+                scenCount <- 0
+                FailCount <- 0 
+                for (dir in dhScenDirs) {
+                    scenI <- unlist(strsplit(dir, "/"))
+                    scen <- scenI[length(scenI)]
+                    scen <- unlist(strsplit(scen, "_"))
+                    CameraNumber <- scen[1]
+                    VisitsNumber <- scen[2]
+                    
+                    dhScens <- list.files(dir, pattern="\\\\.csv$")  # Correctly escaped backslash
+                
+                    for (scen in dhScens) {        
+                        dh <- read.csv(paste0(dir, "/", scen), header=TRUE)
+                    
+                        ## Fit model to scenario data
+                        umf <- unmarkedFrameOccu(y=as.matrix(dh))  # Organize data
+                        fm <- try(occu(~1 ~1, umf))  # Fit a model
+                        modOut <- try(coef(fm))  # Extract model coefficients
+                
+                        if (class(modOut)[1] != "try-error") {    
+                            OP <- try(getParams(fm), silent=TRUE)
+                            
+                            if (class(OP)[1] != "try-error") {
+                                scenCount <- scenCount + 1
+                                OccOutTab[scenCount, "CamN"] <- CameraNumber
+                                OccOutTab[scenCount, "IntervalsN"] <- VisitsNumber
+                                OccOutTab[scenCount, "Response"] <- "psi"
+                                OccOutTab[scenCount, "Estimate"] <- OP$psi
+                                OccOutTab[scenCount, "SE"] <- OP$psiSE
+                                OccOutTab[scenCount, "Bias"] <- OP$psiBias
+                                OccOutTab[scenCount, "inSig"] <- dplyr::between(0, OP$psi - (OP$psiSE * 2.58), OP$psi + (OP$psiSE * 2.58))
+                            }
+                        }
+                    }
+                }
+        
+                suppressPackageStartupMessages(library(tidyverse))
+                options(warn=-1)  # Suppress warnings
+                
+                # Ensure OccOutTab exists and is not empty before filtering
+                if (exists("OccOutTab") && nrow(OccOutTab) > 0) {
+                    SumTab <- OccOutTab %>%
+                        filter(!is.na(inSig) & inSig) %>%  # Ensure 'inSig' is not NA before filtering
+                        group_by(CamN, IntervalsN, Response) %>%
+                        summarise(
+                            N = n(),  # More reliable than length(Estimate)
+                            meanEstimate = mean(Estimate, na.rm=TRUE),
+                            sdEstimate = sd(Estimate, na.rm=TRUE),
+                            seEstimate = sdEstimate / sqrt(N),
+                            UpperCI_Est = quantile(Estimate, probs=0.9, na.rm=TRUE),
+                            LowerCI_Est = quantile(Estimate, probs=0.1, na.rm=TRUE),
+                            meanBias = mean(Bias, na.rm=TRUE),
+                            sdBias = sd(Bias, na.rm=TRUE),
+                            seBias = sdBias / sqrt(N),
+                            UpperCI_Bias = quantile(Bias, probs=0.9, na.rm=TRUE),
+                            LowerCI_Bias = quantile(Bias, probs=0.1, na.rm=TRUE),
+                            .groups = "drop"  # Prevent grouped output warning
+                        ) %>%
+                        mutate(
+                            CamN = as.factor(CamN),
+                            Durations = as.numeric(IntervalsN)
+                        )
+                } else {
+                    SumTab <- data.frame()  # Return an empty dataframe if OccOutTab does not exist or is empty
+                    message("Warning: OccOutTab is empty or does not exist. SumTab is empty.")
+                }
+        
+        
+                library(ggplot2)
+                library(dplyr)
+                
+                
+                pd <- position_dodge(0.5)
+                
+                # Generate the plot
+                plot <- SumTab %>%
+                    filter(!is.na(sdEstimate), meanEstimate < 0.99, meanEstimate > 0.001) %>%
+                    ggplot(
+                        aes(x=Durations, y=meanBias, ymin=LowerCI_Bias, ymax=UpperCI_Bias, colour=CamN)
+                    ) + 
+                        geom_errorbar(width=0.1, position=pd) +
+                        geom_point(size=3, position=pd) +        
+                        facet_grid(Response~., scales="free") +
+                        geom_abline(size=0.5, intercept=0, slope=0)
+                
+                # Save the plot as an image file
+                plot_path <- "my_plot.png"  # Saves in the current working directory
+                
+                # ggsave(plot_path, plot, width=6, height=4, dpi=100)
+                print(plot_path)
+        
+        """
+        
+        
+        # Run the formatted R script
+        ro.r(r_script)
+
+
+    
+
+
+
+# print("Fit occupancy models to all detection histories.")
+# print(paste0(FailCount," models failed."))
+        
 
 
 
