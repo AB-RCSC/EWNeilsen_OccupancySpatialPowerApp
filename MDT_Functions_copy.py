@@ -300,94 +300,107 @@ def simulateReponse():
     # spatial_prob_button.on_click(lambda b: spatial_on_button_click(responseValues, b))
 
 
+camConfig = widgets.Dropdown(
+    options=[(f"{i}", i) for i in range(1, 4)],  # Dropdown options
+    value=1,  # Default selected value
+    description="camConfig:",
+    style={"description_width": "initial"}  # Ensures label is fully visible
+)
+siteScenN = widgets.IntSlider(min=1, max=50, step=1, value=4, description="siteScenN:")
+maxCam = widgets.IntSlider(min=1, max=200, step=1, value=60, description="maxCam:")
+minCam = widgets.IntSlider(min=1, max=200, step=1, value=40, description="minCam:")
+durScenN = widgets.IntSlider(min=1, max=50, step=1, value=4, description="durScenN:")
+maxDur = widgets.IntSlider(min=1, max=50, step=1, value=8, description="maxDur:")
+minDur = widgets.IntSlider(min=1, max=50, step=1, value=4, description="minDur:")
 
+# Output widget to display results dynamically
+simulateOccupancyData_output = widgets.Output()
 
+# Function to display simulation results dynamically
+def func_simulateOccupancyData(change=None):
+    with simulateOccupancyData_output:
+        simulateOccupancyData_output.clear_output(wait=True)  # Clear previous output
+        print(f"Simulating Occupancy Data with values:")
+        print(f"camConfig: {camConfig.value}")
+        print(f"siteScenN: {siteScenN.value}")
+        print(f"maxCam: {maxCam.value}")
+        print(f"minCam: {minCam.value}")
+        print(f"durScenN: {durScenN.value}")
+        print(f"maxDur: {maxDur.value}")
+        print(f"minDur: {minDur.value}")
 
+        # Assign values to new variables
+        cam_config_value = camConfig.value
+        site_scenN_value = siteScenN.value
+        max_cam_value = maxCam.value
+        min_cam_value = minCam.value
+        dur_scenN_value = durScenN.value
+        max_dur_value = maxDur.value
+        min_dur_value = minDur.value
 
-def func_simulateOccupancyData(camConfig, siteScenN, maxCam, minCam, durScenN, maxDur, minDur):
-    sitesN = range(minCam,maxCam,round(maxCam/siteScenN)) 
-    #sitesN = [40]
-    dursN = range(minDur,maxDur,round(maxDur/durScenN))    
-    
-    ###########################
-    ## SIMLUATE DETECTION HISTORIES
-    for sn in sitesN:    
-        sn = sn + 1        
-        for dn in dursN:  
+        # Use new variable names instead of the widget names
+        sitesN = range(min_cam_value, max_cam_value, round(max_cam_value / site_scenN_value)) 
+        dursN = range(min_dur_value, max_dur_value, round(max_dur_value / dur_scenN_value))    
 
-            ###########################
-            ## ASSIGNING SITES
-            
-            ##SYSTEMATIC SITES
-            if (camConfig == 1):            
-                rArray = responseValues["Use"]
-                rSize = rArray.size
-                rSysN = int(round(rSize / sn))
-                ##print("every " + str(rSysN))        
-                #print("Setting pixels as sites.")    
-                siteList = np.zeros(shape=responseValues["Use"].shape)
-                siteList = np.ndarray.flatten(siteList)
-                siteList[1::rSysN] = 1
-                siteList = np.reshape(siteList,(responseValues["Use"].shape))
-            
-            ## RANDOM SITES
-            elif(camConfig == 2):           
-                rArray = responseValues["Use"]
-                rSize = rArray.size
-                siteInds = []
-                for i in range(0, sn):
-                     siteInds.append(random.randrange(rSize))
-                siteList = np.zeros(shape=responseValues["Use"].shape)
-                siteList = np.ndarray.flatten(siteList)
-                siteList[siteInds] = 1
-                siteList = np.reshape(siteList,(responseValues["Use"].shape))
+        ###########################
+        ## SIMULATE DETECTION HISTORIES
+        for sn in sitesN:    
+            sn = sn + 1        
+            for dn in dursN:  
+                ###########################
+                ## ASSIGNING SITES
                 
-            # ##  PLOTTING
-            # plt.close()
-            # plt.title(str(sn) + "cameras")
-            # plt.imshow(siteList)
-            # plt.show()     
-            
-            #########################
-            ## GET TRUE DETECTION AND OCCUPANCY VALUES AT SITES
-            siteOcc = []
-            siteDet = []
-            siteIndex = 0
-            for rInd, row in enumerate(siteList):
-                for cInd, value in enumerate(row):            
-                    if value == 1:
-                        OccValue = responseValues["Occupancy"][rInd,cInd]
-                        DetValue = responseValues["Detection"][rInd,cInd]
-                        siteOcc.append(OccValue)
-                        siteDet.append(DetValue)        
-            siteOcc = np.array(siteOcc)
-            siteDet = np.array(siteDet)       
-            
-            #########################   
-            ## POPULATED DECTECTION HISTORIES (NO MISSING DATA FUNCTIONS YET)
-           
-            ScenName = str(sn) + "_" + str(dn)
-            os.makedirs(cwd + '/Data/DetectionHistories/' + ScenName, exist_ok=True)    
-
-            simN = 10       
-            for simn in range(simN):        
-                DetectionHistory = []
+                ## SYSTEMATIC SITES
+                if cam_config_value == 1:            
+                    rArray = responseValues["Use"]
+                    rSize = rArray.size
+                    rSysN = int(round(rSize / sn))
+                    siteList = np.zeros(shape=responseValues["Use"].shape)
+                    siteList = np.ndarray.flatten(siteList)
+                    siteList[1::rSysN] = 1
+                    siteList = np.reshape(siteList, (responseValues["Use"].shape))
                 
-                for sd in siteDet:    
-                    siteDetHist = []
+                ## RANDOM SITES
+                elif cam_config_value == 2:           
+                    rArray = responseValues["Use"]
+                    rSize = rArray.size
+                    siteInds = [random.randrange(rSize) for _ in range(sn)]
+                    siteList = np.zeros(shape=responseValues["Use"].shape)
+                    siteList = np.ndarray.flatten(siteList)
+                    siteList[siteInds] = 1
+                    siteList = np.reshape(siteList, (responseValues["Use"].shape))
+
+                #########################
+                ## GET TRUE DETECTION AND OCCUPANCY VALUES AT SITES
+                siteOcc = []
+                siteDet = []
+                for rInd, row in enumerate(siteList):
+                    for cInd, value in enumerate(row):            
+                        if value == 1:
+                            siteOcc.append(responseValues["Occupancy"][rInd, cInd])
+                            siteDet.append(responseValues["Detection"][rInd, cInd])
+                            
+                siteOcc = np.array(siteOcc)
+                siteDet = np.array(siteDet)       
+                
+                #########################   
+                ## POPULATED DETECTION HISTORIES (NO MISSING DATA FUNCTIONS YET)
+                ScenName = f"{sn}_{dn}"
+                os.makedirs(f"{cwd}/Data/DetectionHistories/{ScenName}", exist_ok=True)    
+
+                simN = 10       
+                for simn in range(simN):        
+                    DetectionHistory = []
                     
-                    for sv in range(dn):        
-                        det = 0
-                        samp = random.uniform(0, 1)
-                        if samp < sd:
-                            det = 1            
-                        siteDetHist.append(det)    
-                        
-                    DetectionHistory.append(siteDetHist)
+                    for sd in siteDet:    
+                        siteDetHist = [1 if random.uniform(0, 1) < sd else 0 for _ in range(dn)]
+                        DetectionHistory.append(siteDetHist)
 
-                ## export 
-                dh = pd.DataFrame(DetectionHistory)
-                dh.to_csv(cwd + '/Data/DetectionHistories/' + ScenName + "/" + str(simn + 1 ) + '_dh.csv', index=False)
+                    ## Export 
+                    dh = pd.DataFrame(DetectionHistory)
+                    dh.to_csv(f"{cwd}/Data/DetectionHistories/{ScenName}/{simn + 1}_dh.csv", index=False)
+
+
 
 
 
@@ -395,21 +408,166 @@ def func_simulateOccupancyData(camConfig, siteScenN, maxCam, minCam, durScenN, m
 
 
 # camConfig = widgets.IntSlider(min=1, max=3, step=1, value=0, description="camConfig:")
-camConfig = widgets.Dropdown(
-    options=[(f"{i}", i) for i in range(1, 4)],  # Dropdown options
-    value=1,  # Default selected value
-    description="camConfig:",
-    style={"description_width": "initial"}  # Ensures label is fully visible
-)
-siteScenN = widgets.IntSlider(min=1, max=50, step=1, value=0, description="siteScenN:")
-maxCam = widgets.IntSlider(min=1, max=200, step=1, value=0, description="maxCam:")
-minCam = widgets.IntSlider(min=1, max=200, step=1, value=0, description="minCam:")
-durScenN = widgets.IntSlider(min=1, max=50, step=1, value=0, description="durScenN:")
-maxDur = widgets.IntSlider(min=1, max=50, step=1, value=0, description="maxDur:")
-minDur = widgets.IntSlider(min=1, max=50, step=1, value=0, description="minDur:")
+# camConfig = widgets.Dropdown(
+#     options=[(f"{i}", i) for i in range(1, 4)],  # Dropdown options
+#     value=1,  # Default selected value
+#     description="camConfig:",
+#     style={"description_width": "initial"}  # Ensures label is fully visible
+# )
+# siteScenN = widgets.IntSlider(min=1, max=50, step=1, value=0, description="siteScenN:")
+# maxCam = widgets.IntSlider(min=1, max=200, step=1, value=0, description="maxCam:")
+# minCam = widgets.IntSlider(min=1, max=200, step=1, value=0, description="minCam:")
+# durScenN = widgets.IntSlider(min=1, max=50, step=1, value=0, description="durScenN:")
+# maxDur = widgets.IntSlider(min=1, max=50, step=1, value=0, description="maxDur:")
+# minDur = widgets.IntSlider(min=1, max=50, step=1, value=0, description="minDur:")
+
+# # Output widget to display results dynamically
+# simulateOccupancyData_output = widgets.Output()
+
+# def func_simulateOccupancyData(change=None):
+#     with simulateOccupancyData_output:
+#         simulateOccupancyData_output.clear_output(wait=True)  # Clear previous output
+#         print(f"Simulating Occupancy Data with values:")
+#         print(f"camConfig: {camConfig.value}")
+#         print(f"siteScenN: {siteScenN.value}")
+#         print(f"maxCam: {maxCam.value}")
+#         print(f"minCam: {minCam.value}")
+#         print(f"durScenN: {durScenN.value}")
+#         print(f"maxDur: {maxDur.value}")
+#         print(f"minDur: {minDur.value}")
+
+        # camConfig = camConfig.value
+        # siteScenN = siteScenN.value
+        # maxCam = maxCam.value
+        # minCam = minCam.value
+        # durScenN = durScenN.value
+        # maxDur = maxDur.value
+        # minDur = minDur.value
+
+
+        # sitesN = range(minCam,maxCam,round(maxCam/siteScenN)) 
+        # #sitesN = [40]
+        # dursN = range(minDur,maxDur,round(maxDur/durScenN))    
+        
+        # ###########################
+        # ## SIMLUATE DETECTION HISTORIES
+        # for sn in sitesN:    
+        #     sn = sn + 1        
+        #     for dn in dursN:  
+    
+        #         ###########################
+        #         ## ASSIGNING SITES
+                
+        #         ##SYSTEMATIC SITES
+        #         if (camConfig == 1):            
+        #             rArray = responseValues["Use"]
+        #             rSize = rArray.size
+        #             rSysN = int(round(rSize / sn))
+        #             ##print("every " + str(rSysN))        
+        #             #print("Setting pixels as sites.")    
+        #             siteList = np.zeros(shape=responseValues["Use"].shape)
+        #             siteList = np.ndarray.flatten(siteList)
+        #             siteList[1::rSysN] = 1
+        #             siteList = np.reshape(siteList,(responseValues["Use"].shape))
+                
+        #         ## RANDOM SITES
+        #         elif(camConfig == 2):           
+        #             rArray = responseValues["Use"]
+        #             rSize = rArray.size
+        #             siteInds = []
+        #             for i in range(0, sn):
+        #                  siteInds.append(random.randrange(rSize))
+        #             siteList = np.zeros(shape=responseValues["Use"].shape)
+        #             siteList = np.ndarray.flatten(siteList)
+        #             siteList[siteInds] = 1
+        #             siteList = np.reshape(siteList,(responseValues["Use"].shape))
+                    
+        #         # ##  PLOTTING
+        #         # plt.close()
+        #         # plt.title(str(sn) + "cameras")
+        #         # plt.imshow(siteList)
+        #         # plt.show()     
+                
+        #         #########################
+        #         ## GET TRUE DETECTION AND OCCUPANCY VALUES AT SITES
+        #         siteOcc = []
+        #         siteDet = []
+        #         siteIndex = 0
+        #         for rInd, row in enumerate(siteList):
+        #             for cInd, value in enumerate(row):            
+        #                 if value == 1:
+        #                     OccValue = responseValues["Occupancy"][rInd,cInd]
+        #                     DetValue = responseValues["Detection"][rInd,cInd]
+        #                     siteOcc.append(OccValue)
+        #                     siteDet.append(DetValue)        
+        #         siteOcc = np.array(siteOcc)
+        #         siteDet = np.array(siteDet)       
+                
+        #         #########################   
+        #         ## POPULATED DECTECTION HISTORIES (NO MISSING DATA FUNCTIONS YET)
+               
+        #         ScenName = str(sn) + "_" + str(dn)
+        #         os.makedirs(cwd + '/Data/DetectionHistories/' + ScenName, exist_ok=True)    
+    
+        #         simN = 10       
+        #         for simn in range(simN):        
+        #             DetectionHistory = []
+                    
+        #             for sd in siteDet:    
+        #                 siteDetHist = []
+                        
+        #                 for sv in range(dn):        
+        #                     det = 0
+        #                     samp = random.uniform(0, 1)
+        #                     if samp < sd:
+        #                         det = 1            
+        #                     siteDetHist.append(det)    
+                            
+        #                 DetectionHistory.append(siteDetHist)
+    
+        #             ## export 
+        #             dh = pd.DataFrame(DetectionHistory)
+        #             dh.to_csv(cwd + '/Data/DetectionHistories/' + ScenName + "/" + str(simn + 1 ) + '_dh.csv', index=False)
 
 
 
+
+
+
+# # camConfig = widgets.IntSlider(min=1, max=3, step=1, value=0, description="camConfig:")
+# camConfig = widgets.Dropdown(
+#     options=[(f"{i}", i) for i in range(1, 4)],  # Dropdown options
+#     value=1,  # Default selected value
+#     description="camConfig:",
+#     style={"description_width": "initial"}  # Ensures label is fully visible
+# )
+# siteScenN = widgets.IntSlider(min=1, max=50, step=1, value=0, description="siteScenN:")
+# maxCam = widgets.IntSlider(min=1, max=200, step=1, value=0, description="maxCam:")
+# minCam = widgets.IntSlider(min=1, max=200, step=1, value=0, description="minCam:")
+# durScenN = widgets.IntSlider(min=1, max=50, step=1, value=0, description="durScenN:")
+# maxDur = widgets.IntSlider(min=1, max=50, step=1, value=0, description="maxDur:")
+# minDur = widgets.IntSlider(min=1, max=50, step=1, value=0, description="minDur:")
+
+
+
+####------------------- Working but sample code start --------------------------------
+# def simulateOccupancyData():
+#     # Attach observer to all widgets
+#     for widget in [camConfig, siteScenN, maxCam, minCam, durScenN, maxDur, minDur]:
+#         widget.observe(func_simulateOccupancyData, names="value")
+
+#     # Create VBox layout
+#     simulateOccupancyData_Vbox = widgets.VBox(
+#         [camConfig, siteScenN, maxCam, minCam, durScenN, maxDur, minDur, simulateOccupancyData_output],
+#         layout=widgets.Layout(width='auto')
+#     )
+    
+#     # Call function initially to show default values
+#     func_simulateOccupancyData()
+
+#     return simulateOccupancyData_Vbox
+
+####------------------- Working but sample code end --------------------------------
 
 
 
@@ -442,9 +600,22 @@ def simulateOccupancyData():
     # durScenN = askQuestion("int","Enter the number of duration scenarios.")
     # maxDur = askQuestion("int","Enter the max duration of deployments (weeks).")
     # minDur = askQuestion("int","Enter the min duration of deployments (weeks).")
-    simulateOccupancyData_Vbox = widgets.VBox([camConfig, siteScenN, maxCam, minCam, durScenN, maxDur, minDur], layout=widgets.Layout(width='auto'))
     
+    # Attach observer to all widgets
+    for widget in [camConfig, siteScenN, maxCam, minCam, durScenN, maxDur, minDur]:
+        widget.observe(func_simulateOccupancyData, names="value")
+
+    # Create VBox layout
+    simulateOccupancyData_Vbox = widgets.VBox(
+        [camConfig, siteScenN, maxCam, minCam, durScenN, maxDur, minDur, simulateOccupancyData_output],
+        layout=widgets.Layout(width='auto')
+    )
+    
+    # Call function initially to show default values
+    func_simulateOccupancyData()
+
     return simulateOccupancyData_Vbox
+
 
 
 
