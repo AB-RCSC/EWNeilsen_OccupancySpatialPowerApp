@@ -76,6 +76,7 @@ slider_B = widgets.FloatSlider(min=0, max=0.1, step=0.001, value=0.05, descripti
 
 
 # Output widgets for displaying values and the bar chart
+secondGraphOut = widgets.Output()
 value_output = widgets.Output()
 plot_output = widgets.Output()
 out = widgets.Output()
@@ -322,6 +323,15 @@ simulateOccupancyData_output = widgets.Output()
 
 # Define your function
 def func_simulateOccupancyData(change=None):
+    detection_histories_path = os.path.join(cwd, "Data", "DetectionHistories")
+
+    # Check if the folder exists, then delete it
+    if os.path.exists(detection_histories_path):
+        shutil.rmtree(detection_histories_path)  # Delete the folder and its contents
+    
+    # Recreate the folder
+    os.makedirs(detection_histories_path, exist_ok=True)
+    
     with simulateOccupancyData_output:
         simulateOccupancyData_output.clear_output(wait=True)  # Clear previous output
         print(f"Simulating Occupancy Data with values:")
@@ -405,13 +415,13 @@ def func_simulateOccupancyData(change=None):
         ro.globalenv["N"] = N  
         ro.globalenv["meanDetection"] = float(meanDetection) 
 
-        ro.globalenv["cam_config_value"] = cam_config_value
-        ro.globalenv["site_scenN_value"] = site_scenN_value
-        ro.globalenv["max_cam_value"] = max_cam_value
-        ro.globalenv["min_cam_value"] = min_cam_value
-        ro.globalenv["dur_scenN_value"] = dur_scenN_value
-        ro.globalenv["max_dur_value"] = max_dur_value
-        ro.globalenv["min_dur_value"] = min_dur_value
+        # ro.globalenv["cam_config_value"] = cam_config_value
+        # ro.globalenv["site_scenN_value"] = site_scenN_value
+        # ro.globalenv["max_cam_value"] = max_cam_value
+        # ro.globalenv["min_cam_value"] = min_cam_value
+        # ro.globalenv["dur_scenN_value"] = dur_scenN_value
+        # ro.globalenv["max_dur_value"] = max_dur_value
+        # ro.globalenv["min_dur_value"] = min_dur_value
 
         # Multi-line R script (fixed formatting)
         r_script = """
@@ -485,39 +495,42 @@ def func_simulateOccupancyData(change=None):
                 
                 # Ensure OccOutTab exists and is not empty before filtering
                 if (exists("OccOutTab") && nrow(OccOutTab) > 0) {
-                    SumTab <- OccOutTab %>%
-                        filter(!is.na(inSig) & inSig) %>%  # Ensure 'inSig' is not NA before filtering
+                    SumTab = OccOutTab %>%
+                        filter(!inSig) %>%
                         group_by(CamN, IntervalsN, Response) %>%
                         summarise(
-                            N = n(),  # More reliable than length(Estimate)
-                            meanEstimate = mean(Estimate, na.rm=TRUE),
-                            sdEstimate = sd(Estimate, na.rm=TRUE),
-                            seEstimate = sdEstimate / sqrt(N),
-                            UpperCI_Est = quantile(Estimate, probs=0.9, na.rm=TRUE),
-                            LowerCI_Est = quantile(Estimate, probs=0.1, na.rm=TRUE),
-                            meanBias = mean(Bias, na.rm=TRUE),
-                            sdBias = sd(Bias, na.rm=TRUE),
-                            seBias = sdBias / sqrt(N),
-                            UpperCI_Bias = quantile(Bias, probs=0.9, na.rm=TRUE),
-                            LowerCI_Bias = quantile(Bias, probs=0.1, na.rm=TRUE),
-                            .groups = "drop"  # Prevent grouped output warning
+                            N = length(Estimate),
+                            
+                            meanEstimate = mean(Estimate),
+                            sdEstimate = sd(Estimate),
+                            seEstimate   = sdEstimate / sqrt(N),
+                            UpperCI_Est = quantile(Estimate, probs = 0.9),
+                            LowerCI_Est = quantile(Estimate, probs = 0.1),
+                            
+                            meanSE = mean(SE),
+                            sdSE = sd(SE),
+                            seSE   = sdSE / sqrt(N),
+                            UpperCI_SE = quantile(SE, probs = 0.9),
+                            LowerCI_SE = quantile(SE, probs = 0.1),
+                            
+                            meanBias = mean(Bias),
+                            sdBias = sd(Bias),
+                            seBias   = sdBias / sqrt(N),
+                            UpperCI_Bias = quantile(Bias, probs = 0.9),
+                            LowerCI_Bias = quantile(Bias, probs = 0.1),
+                            .groups = "drop"  # Prevent "grouped output" message
                         ) %>%
-                        mutate(
-                            CamN = as.factor(CamN),
-                            Durations = as.numeric(IntervalsN)
-                        )
-                } else {
-                    SumTab <- data.frame()  # Return an empty dataframe if OccOutTab does not exist or is empty
-                    message("Warning: OccOutTab is empty or does not exist. SumTab is empty.")
+                        mutate(CamN = as.factor(CamN),
+                               Durations = as.numeric(IntervalsN))
                 }
-        
+                # print(SumTab)
+                # print(meanDetection)
         
                 library(ggplot2)
                 library(dplyr)
                 
                 
                 pd <- position_dodge(0.5)
-                
                 # Generate the plot
                 plot <- SumTab %>%
                     filter(!is.na(sdEstimate), meanEstimate < 0.99, meanEstimate > 0.001) %>%
@@ -532,194 +545,38 @@ def func_simulateOccupancyData(change=None):
                 # Save the plot as an image file
                 plot_path <- "my_plot.png"  # Saves in the current working directory
                 
-                # ggsave(plot_path, plot, width=6, height=4, dpi=100)
-                print(plot_path)
+                ggsave(plot_path, plot, width=6, height=4, dpi=100)
+                # print(plot_path)
         
         """
-        
-        
         # Run the formatted R script
         ro.r(r_script)
-
-
-    
-
-
-
-# print("Fit occupancy models to all detection histories.")
-# print(paste0(FailCount," models failed."))
         
-
-
-
-
-
-
-
-
-# camConfig = widgets.IntSlider(min=1, max=3, step=1, value=0, description="camConfig:")
-# camConfig = widgets.Dropdown(
-#     options=[(f"{i}", i) for i in range(1, 4)],  # Dropdown options
-#     value=1,  # Default selected value
-#     description="camConfig:",
-#     style={"description_width": "initial"}  # Ensures label is fully visible
-# )
-# siteScenN = widgets.IntSlider(min=1, max=50, step=1, value=0, description="siteScenN:")
-# maxCam = widgets.IntSlider(min=1, max=200, step=1, value=0, description="maxCam:")
-# minCam = widgets.IntSlider(min=1, max=200, step=1, value=0, description="minCam:")
-# durScenN = widgets.IntSlider(min=1, max=50, step=1, value=0, description="durScenN:")
-# maxDur = widgets.IntSlider(min=1, max=50, step=1, value=0, description="maxDur:")
-# minDur = widgets.IntSlider(min=1, max=50, step=1, value=0, description="minDur:")
-
-# # Output widget to display results dynamically
-# simulateOccupancyData_output = widgets.Output()
-
-# def func_simulateOccupancyData(change=None):
-#     with simulateOccupancyData_output:
-#         simulateOccupancyData_output.clear_output(wait=True)  # Clear previous output
-#         print(f"Simulating Occupancy Data with values:")
-#         print(f"camConfig: {camConfig.value}")
-#         print(f"siteScenN: {siteScenN.value}")
-#         print(f"maxCam: {maxCam.value}")
-#         print(f"minCam: {minCam.value}")
-#         print(f"durScenN: {durScenN.value}")
-#         print(f"maxDur: {maxDur.value}")
-#         print(f"minDur: {minDur.value}")
-
-        # camConfig = camConfig.value
-        # siteScenN = siteScenN.value
-        # maxCam = maxCam.value
-        # minCam = minCam.value
-        # durScenN = durScenN.value
-        # maxDur = maxDur.value
-        # minDur = minDur.value
-
-
-        # sitesN = range(minCam,maxCam,round(maxCam/siteScenN)) 
-        # #sitesN = [40]
-        # dursN = range(minDur,maxDur,round(maxDur/durScenN))    
+        with secondGraphOut:
+            secondGraphOut.clear_output(wait=True)  # Clear previous plot
+            # Convert R's StrVector to a regular Python string
+            plot_path = ro.globalenv["plot_path"]
+            plot_path = str(plot_path[0])  # Extract the string value
+            
+            # # Ensure the path is correct
+            # print("Plot saved at:", plot_path)  # Debugging step
+            
+            # Open and display the saved plot using ipywidgets
+            with open(plot_path, "rb") as f:
+                plot_widget = widgets.Image(value=f.read(), format='png')
+            # Wrap it inside a VBox container
+            graph2_first_container = widgets.VBox(
+                            [plot_widget],
+                            layout=widgets.Layout(
+                                width="60%",
+                                display="flex",
+                                align_items="center",  # Centers along the cross-axis
+                                justify_content="center",  # Centers along the main axis
+                                margin="auto"  # Centers the box itself
+                            )
+                        )
+            display(graph2_first_container)
         
-        # ###########################
-        # ## SIMLUATE DETECTION HISTORIES
-        # for sn in sitesN:    
-        #     sn = sn + 1        
-        #     for dn in dursN:  
-    
-        #         ###########################
-        #         ## ASSIGNING SITES
-                
-        #         ##SYSTEMATIC SITES
-        #         if (camConfig == 1):            
-        #             rArray = responseValues["Use"]
-        #             rSize = rArray.size
-        #             rSysN = int(round(rSize / sn))
-        #             ##print("every " + str(rSysN))        
-        #             #print("Setting pixels as sites.")    
-        #             siteList = np.zeros(shape=responseValues["Use"].shape)
-        #             siteList = np.ndarray.flatten(siteList)
-        #             siteList[1::rSysN] = 1
-        #             siteList = np.reshape(siteList,(responseValues["Use"].shape))
-                
-        #         ## RANDOM SITES
-        #         elif(camConfig == 2):           
-        #             rArray = responseValues["Use"]
-        #             rSize = rArray.size
-        #             siteInds = []
-        #             for i in range(0, sn):
-        #                  siteInds.append(random.randrange(rSize))
-        #             siteList = np.zeros(shape=responseValues["Use"].shape)
-        #             siteList = np.ndarray.flatten(siteList)
-        #             siteList[siteInds] = 1
-        #             siteList = np.reshape(siteList,(responseValues["Use"].shape))
-                    
-        #         # ##  PLOTTING
-        #         # plt.close()
-        #         # plt.title(str(sn) + "cameras")
-        #         # plt.imshow(siteList)
-        #         # plt.show()     
-                
-        #         #########################
-        #         ## GET TRUE DETECTION AND OCCUPANCY VALUES AT SITES
-        #         siteOcc = []
-        #         siteDet = []
-        #         siteIndex = 0
-        #         for rInd, row in enumerate(siteList):
-        #             for cInd, value in enumerate(row):            
-        #                 if value == 1:
-        #                     OccValue = responseValues["Occupancy"][rInd,cInd]
-        #                     DetValue = responseValues["Detection"][rInd,cInd]
-        #                     siteOcc.append(OccValue)
-        #                     siteDet.append(DetValue)        
-        #         siteOcc = np.array(siteOcc)
-        #         siteDet = np.array(siteDet)       
-                
-        #         #########################   
-        #         ## POPULATED DECTECTION HISTORIES (NO MISSING DATA FUNCTIONS YET)
-               
-        #         ScenName = str(sn) + "_" + str(dn)
-        #         os.makedirs(cwd + '/Data/DetectionHistories/' + ScenName, exist_ok=True)    
-    
-        #         simN = 10       
-        #         for simn in range(simN):        
-        #             DetectionHistory = []
-                    
-        #             for sd in siteDet:    
-        #                 siteDetHist = []
-                        
-        #                 for sv in range(dn):        
-        #                     det = 0
-        #                     samp = random.uniform(0, 1)
-        #                     if samp < sd:
-        #                         det = 1            
-        #                     siteDetHist.append(det)    
-                            
-        #                 DetectionHistory.append(siteDetHist)
-    
-        #             ## export 
-        #             dh = pd.DataFrame(DetectionHistory)
-        #             dh.to_csv(cwd + '/Data/DetectionHistories/' + ScenName + "/" + str(simn + 1 ) + '_dh.csv', index=False)
-
-
-
-
-
-
-# # camConfig = widgets.IntSlider(min=1, max=3, step=1, value=0, description="camConfig:")
-# camConfig = widgets.Dropdown(
-#     options=[(f"{i}", i) for i in range(1, 4)],  # Dropdown options
-#     value=1,  # Default selected value
-#     description="camConfig:",
-#     style={"description_width": "initial"}  # Ensures label is fully visible
-# )
-# siteScenN = widgets.IntSlider(min=1, max=50, step=1, value=0, description="siteScenN:")
-# maxCam = widgets.IntSlider(min=1, max=200, step=1, value=0, description="maxCam:")
-# minCam = widgets.IntSlider(min=1, max=200, step=1, value=0, description="minCam:")
-# durScenN = widgets.IntSlider(min=1, max=50, step=1, value=0, description="durScenN:")
-# maxDur = widgets.IntSlider(min=1, max=50, step=1, value=0, description="maxDur:")
-# minDur = widgets.IntSlider(min=1, max=50, step=1, value=0, description="minDur:")
-
-
-
-####------------------- Working but sample code start --------------------------------
-# def simulateOccupancyData():
-#     # Attach observer to all widgets
-#     for widget in [camConfig, siteScenN, maxCam, minCam, durScenN, maxDur, minDur]:
-#         widget.observe(func_simulateOccupancyData, names="value")
-
-#     # Create VBox layout
-#     simulateOccupancyData_Vbox = widgets.VBox(
-#         [camConfig, siteScenN, maxCam, minCam, durScenN, maxDur, minDur, simulateOccupancyData_output],
-#         layout=widgets.Layout(width='auto')
-#     )
-    
-#     # Call function initially to show default values
-#     func_simulateOccupancyData()
-
-#     return simulateOccupancyData_Vbox
-
-####------------------- Working but sample code end --------------------------------
-
-
 
 def simulateOccupancyData():
     global nodata; global cell_size; global extent; global srs; global n_rows; global n_cols
@@ -727,29 +584,6 @@ def simulateOccupancyData():
     global prevPos
     global responseVar
     global cwd
-    
-    ###########################
-    ## SAVE DETECTION HISTORIES LOCATION
-    # if os.path.isdir(cwd + '/Data/DetectionHistories'):
-        # os.remove(cwd + '/Data/DetectionHistories')
-    os.makedirs(cwd + '/Data/DetectionHistories', exist_ok=True) 
-    
-    # ###########################
-    # ## DEPLOYMENT SCENARIOS
-    # ## type of camera deployment
-    # camConfig = askQuestion("int","Enter the configuration of cameras \n (1) Systematic\n (2) Random\n (3) Stratigied Random \n")    
-    
-    # ## deployment scenarios variables
-    # """The tool can assess multiple effort levels,
-    # defined here as the combination of number of
-    # sites and lenght of the deployment"""
-    # print('------------------')
-    # siteScenN = askQuestion("int","Enter the number of site scenarios.")
-    # maxCam = askQuestion("int","Enter the max number of cameras.")
-    # minCam = askQuestion("int","Enter the min number of cameras.")      
-    # durScenN = askQuestion("int","Enter the number of duration scenarios.")
-    # maxDur = askQuestion("int","Enter the max duration of deployments (weeks).")
-    # minDur = askQuestion("int","Enter the min duration of deployments (weeks).")
     
     # Attach observer to all widgets
     for widget in [camConfig, siteScenN, maxCam, minCam, durScenN, maxDur, minDur]:
@@ -764,7 +598,15 @@ def simulateOccupancyData():
     # Call function initially to show default values
     func_simulateOccupancyData()
 
-    return simulateOccupancyData_Vbox
+    graph2_container = widgets.VBox([secondGraphOut],
+                        layout=widgets.Layout(
+                            width = "100%",
+                            flex_flow="column",
+                            align_items="center",
+                            border="2px solid black"  # 2px black border
+                        ))
+
+    return simulateOccupancyData_Vbox, graph2_container
 
 
 
