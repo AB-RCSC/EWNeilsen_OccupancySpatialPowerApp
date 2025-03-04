@@ -11,6 +11,7 @@ import sys
 import random
 import inspect
 import pandas as pd
+from PIL import Image
 import shutil
 import ipywidgets as widgets # added by alif
 from IPython.display import display # added by alif
@@ -466,17 +467,17 @@ def func_simulateOccupancyData(change=None):
                     dhScens <- list.files(dir, pattern="\\\\.csv$")  # Correctly escaped backslash
                 
                     for (scen in dhScens) {        
-                        dh <- read.csv(paste0(dir, "/", scen), header=TRUE)
+                        dh <- read.csv(paste0(dir, "/", scen), header=T)
                     
                         ## Fit model to scenario data
                         umf <- unmarkedFrameOccu(y=as.matrix(dh))  # Organize data
                         fm <- try(occu(~1 ~1, umf))  # Fit a model
                         modOut <- try(coef(fm))  # Extract model coefficients
                 
-                        if (class(modOut)[1] != "try-error") {    
-                            OP <- try(getParams(fm), silent=TRUE)
+                        if (class(modOut) != "try-error") {    
+                            OP <- try(getParams(fm))
                             
-                            if (class(OP)[1] != "try-error") {
+                            if (class(OP) != "try-error") {
                                 scenCount <- scenCount + 1
                                 OccOutTab[scenCount, "CamN"] <- CameraNumber
                                 OccOutTab[scenCount, "IntervalsN"] <- VisitsNumber
@@ -485,13 +486,31 @@ def func_simulateOccupancyData(change=None):
                                 OccOutTab[scenCount, "SE"] <- OP$psiSE
                                 OccOutTab[scenCount, "Bias"] <- OP$psiBias
                                 OccOutTab[scenCount, "inSig"] <- dplyr::between(0, OP$psi - (OP$psiSE * 2.58), OP$psi + (OP$psiSE * 2.58))
+
+                                scenCount <- scenCount + 1
+                                OccOutTab[scenCount,"CamN"] <- CameraNumber
+                                OccOutTab[scenCount,"IntervalsN"] <- VisitsNumber
+                                OccOutTab[scenCount,"Response"] <- "p"
+                                OccOutTab[scenCount,"Estimate"] <- OP$p
+                                OccOutTab[scenCount,"SE"] <- OP$pSE
+                                OccOutTab[scenCount,"Bias"] <- OP$pBias
+                                OccOutTab[scenCount,"inSig"] <- dplyr::between(0,OP$p-(OP$pSE*2.58),OP$p+(OP$pSE*2.58))
+                            }
+                            else{
+                                FailCount = FailCount + 1 
+                                # print("Model failed")
                             }
                         }
-                    }
+                        else{
+                            FailCount = FailCount + 1 
+                            # print("Model failed")
+                                    }
                 }
+            }
         
                 suppressPackageStartupMessages(library(tidyverse))
                 options(warn=-1)  # Suppress warnings
+                
                 
                 # Ensure OccOutTab exists and is not empty before filtering
                 if (exists("OccOutTab") && nrow(OccOutTab) > 0) {
@@ -523,30 +542,28 @@ def func_simulateOccupancyData(change=None):
                         mutate(CamN = as.factor(CamN),
                                Durations = as.numeric(IntervalsN))
                 }
+                
                 # print(SumTab)
                 # print(meanDetection)
         
                 library(ggplot2)
                 library(dplyr)
                 
-                
                 pd <- position_dodge(0.5)
-                # Generate the plot
-                plot <- SumTab %>%
+                
+                # Generate the plot and save as PNG
+                plot_path <- "r_plot.png"
+                
+                output <- SumTab %>%
                     filter(!is.na(sdEstimate), meanEstimate < 0.99, meanEstimate > 0.001) %>%
-                    ggplot(
-                        aes(x=Durations, y=meanBias, ymin=LowerCI_Bias, ymax=UpperCI_Bias, colour=CamN)
-                    ) + 
+                    ggplot(aes(x=Durations, y=meanBias, ymin=LowerCI_Bias, ymax=UpperCI_Bias, colour=CamN)) +
                         geom_errorbar(width=0.1, position=pd) +
-                        geom_point(size=3, position=pd) +        
+                        geom_point(size=3, position=pd) +
                         facet_grid(Response~., scales="free") +
                         geom_abline(size=0.5, intercept=0, slope=0)
                 
-                # Save the plot as an image file
-                plot_path <- "my_plot.png"  # Saves in the current working directory
-                
-                ggsave(plot_path, plot, width=6, height=4, dpi=100)
-                # print(plot_path)
+                ggsave(plot_path, output, width=6, height=4, dpi=100)
+                # print(p)
         
         """
         # Run the formatted R script
@@ -560,10 +577,21 @@ def func_simulateOccupancyData(change=None):
             
             # # Ensure the path is correct
             # print("Plot saved at:", plot_path)  # Debugging step
-            
+
+            #################################
+            # plot_widget = Image.open(plot_path)
+            # print(plot_path)
+
+            with open("r_plot.png", "rb") as file:
+                image_data = file.read()
+
+            plot_widget = widgets.Image(
+                                value=image_data,
+                                format='png'
+                            )
             # Open and display the saved plot using ipywidgets
-            with open(plot_path, "rb") as f:
-                plot_widget = widgets.Image(value=f.read(), format='png')
+            # with open(plot_path, "rb") as f:
+            #     plot_widget = widgets.Image(value=f.read(), format='png')
             # Wrap it inside a VBox container
             graph2_first_container = widgets.VBox(
                             [plot_widget],
